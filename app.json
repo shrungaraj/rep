@@ -1,0 +1,23 @@
+{
+  "name": "Instagram Repost Bot",
+  "description": "A Flask web application that automatically fetches and reposts content from specified Instagram sources.",
+  "repository": "https://github.com/yourusername/instagram-repost-bot",
+  "keywords": ["python", "flask", "instagram", "bot", "repost"],
+  "addons": [
+    "heroku-postgresql"
+  ],
+  "env": {
+    "SESSION_SECRET": {
+      "description": "A secret key for Flask session management",
+      "generator": "secret"
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "scripts": {
+    "postdeploy": "python -c \"from app import db; db.create_all()\""
+  }
+}
