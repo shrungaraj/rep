@@ -1,0 +1,191 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Post History</h1>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                Filter Posts
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('history') }}">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-4">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+                                <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                                <option value="posted" {% if status_filter == 'posted' %}selected{% endif %}>Posted</option>
+                                <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>Failed</option>
+                                <option value="canceled" {% if status_filter == 'canceled' %}selected{% endif %}>Canceled</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="days" class="form-label">Time Period</label>
+                            <select class="form-select" id="days" name="days">
+                                <option value="1" {% if days == '1' %}selected{% endif %}>Last 24 hours</option>
+                                <option value="7" {% if days == '7' %}selected{% endif %}>Last 7 days</option>
+                                <option value="30" {% if days == '30' %}selected{% endif %}>Last 30 days</option>
+                                <option value="90" {% if days == '90' %}selected{% endif %}>Last 90 days</option>
+                                <option value="0" {% if days == '0' %}selected{% endif %}>All time</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                Posts
+            </div>
+            <div class="card-body">
+                {% if posts.items %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th>Caption</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Scheduled/Posted</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for post in posts.items %}
+                            <tr>
+                                <td>
+                                    {% if post.source %}
+                                        {% if post.source.type == 'account' %}@{% elif post.source.type == 'hashtag' %}#{% endif %}{{ post.source.name }}
+                                    {% else %}
+                                        Unknown
+                                    {% endif %}
+                                </td>
+                                <td>{{ post.caption[:50] + '...' if post.caption and post.caption|length > 50 else post.caption }}</td>
+                                <td>
+                                    {% if post.status == 'pending' %}
+                                    <span class="badge bg-primary">Pending</span>
+                                    {% elif post.status == 'posted' %}
+                                    <span class="badge bg-success">Posted</span>
+                                    {% elif post.status == 'failed' %}
+                                    <span class="badge bg-danger">Failed</span>
+                                    {% elif post.status == 'canceled' %}
+                                    <span class="badge bg-secondary">Canceled</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ post.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    {% if post.status == 'posted' and post.posted_time %}
+                                    {{ post.posted_time.strftime('%Y-%m-%d %H:%M') }}
+                                    {% elif post.status == 'pending' and post.scheduled_time %}
+                                    {{ post.scheduled_time.strftime('%Y-%m-%d %H:%M') }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if post.status == 'pending' %}
+                                    <form method="POST" action="{{ url_for('repost_post', post_id=post.id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-success">Repost Now</button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('cancel_post', post_id=post.id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
+                                    </form>
+                                    {% elif post.instagram_post_url %}
+                                    <a href="{{ post.instagram_post_url }}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>
+                                    {% endif %}
+                                    
+                                    {% if post.status == 'failed' and post.error_message %}
+                                    <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="popover" data-bs-placement="top" title="Error Details" data-bs-content="{{ post.error_message }}">
+                                        Error Details
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if posts.pages > 1 %}
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center">
+                        {% if posts.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('history', status=status_filter, days=days, page=posts.prev_num) }}">Previous</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for page_num in posts.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                            {% if page_num %}
+                                {% if page_num == posts.page %}
+                                <li class="page-item active">
+                                    <a class="page-link" href="#">{{ page_num }}</a>
+                                </li>
+                                {% else %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('history', status=status_filter, days=days, page=page_num) }}">{{ page_num }}</a>
+                                </li>
+                                {% endif %}
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#">...</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if posts.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('history', status=status_filter, days=days, page=posts.next_num) }}">Next</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Next</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                
+                {% else %}
+                <div class="text-center p-4">
+                    <p>No posts found matching your criteria.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize popovers for error details
+    const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl);
+    });
+});
+</script>
+{% endblock %}

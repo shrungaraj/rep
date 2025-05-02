@@ -1,0 +1,110 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Settings</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                Instagram Account
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('settings') }}">
+                    <div class="mb-3">
+                        <label for="instagram_username" class="form-label">Instagram Username</label>
+                        <input type="text" class="form-control" id="instagram_username" name="instagram_username" value="{{ current_user.instagram_username or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="instagram_password" class="form-label">Instagram Password</label>
+                        <input type="password" class="form-control" id="instagram_password" name="instagram_password" placeholder="••••••••">
+                        <div class="form-text">Leave blank to keep current password.</div>
+                    </div>
+                    <div class="alert alert-info">
+                        <span data-feather="info"></span>
+                        <strong>Note:</strong> In a production environment, we would use Instagram's official OAuth for authentication instead of storing credentials.
+                    </div>
+                    
+                    <hr>
+                    
+                    <h5>Repost Settings</h5>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="auto_repost" name="auto_repost" {% if settings.auto_repost %}checked{% endif %}>
+                        <label class="form-check-label" for="auto_repost">Enable automatic reposting</label>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="repost_delay" class="form-label">Repost delay (minutes)</label>
+                        <input type="number" class="form-control" id="repost_delay" name="repost_delay" value="{{ settings.repost_delay or 0 }}" min="0">
+                        <div class="form-text">Delay between finding a post and reposting it.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="check_interval" class="form-label">Check interval (minutes)</label>
+                        <input type="number" class="form-control" id="check_interval" name="check_interval" value="{{ settings.check_interval or 60 }}" min="15">
+                        <div class="form-text">How often to check sources for new posts.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="post_limit_per_day" class="form-label">Daily post limit</label>
+                        <input type="number" class="form-control" id="post_limit_per_day" name="post_limit_per_day" value="{{ settings.post_limit_per_day or 5 }}" min="1" max="20">
+                        <div class="form-text">Maximum number of posts to repost per day.</div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h5>Caption Settings</h5>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="add_credit" name="add_credit" {% if settings.add_credit %}checked{% endif %}>
+                        <label class="form-check-label" for="add_credit">Add source credit to caption</label>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="credit_text" class="form-label">Credit text template</label>
+                        <input type="text" class="form-control" id="credit_text" name="credit_text" value="{{ settings.credit_text or 'Reposted from @{source}' }}">
+                        <div class="form-text">Use {source} as a placeholder for the source name.</div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                Help Information
+            </div>
+            <div class="card-body">
+                <h5>How Instagram Reposting Works</h5>
+                <p>This bot fetches content from Instagram sources and automatically reposts it to your account.</p>
+                
+                <div class="alert alert-warning">
+                    <span data-feather="alert-triangle"></span>
+                    <strong>Important:</strong> Always respect copyright and give proper credit to original content creators.
+                </div>
+                
+                <h6>Reposting Workflow</h6>
+                <ol>
+                    <li>Add Instagram accounts or hashtags as sources</li>
+                    <li>The bot automatically checks for new posts based on your interval setting</li>
+                    <li>Posts are queued with the specified delay</li>
+                    <li>Bot reposts content to your account with optional credit</li>
+                </ol>
+                
+                <h6>Limits to Consider</h6>
+                <ul>
+                    <li>Instagram API has rate limits that affect how frequently you can fetch posts</li>
+                    <li>Posting too frequently may trigger Instagram's anti-spam measures</li>
+                    <li>We recommend starting with a low daily post limit (3-5 posts)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

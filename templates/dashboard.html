@@ -1,0 +1,216 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Dashboard</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button id="fetch-now-btn" class="btn btn-sm btn-outline-primary">
+            <span data-feather="refresh-cw"></span>
+            Fetch Posts Now
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Instagram Connection Status -->
+    <div class="col-md-12 mb-4">
+        <div class="card border-{% if instagram_connected %}success{% else %}danger{% endif %}">
+            <div class="card-body">
+                <h5 class="card-title">Instagram Connection Status</h5>
+                {% if instagram_connected %}
+                <p class="card-text text-success">
+                    <span data-feather="check-circle"></span> Connected to Instagram
+                </p>
+                {% else %}
+                <p class="card-text text-danger">
+                    <span data-feather="alert-circle"></span> Not connected to Instagram
+                </p>
+                <a href="{{ url_for('settings') }}" class="btn btn-primary btn-sm">Configure Instagram</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Summary -->
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                Sources
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ active_sources }} / {{ total_sources }}</h5>
+                <p class="card-text">Active Sources</p>
+                <a href="{{ url_for('sources') }}" class="btn btn-outline-primary btn-sm">Manage Sources</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                Today's Posts
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ posts_today }} / {{ post_limit }}</h5>
+                <p class="card-text">Posts Today / Daily Limit</p>
+                <a href="{{ url_for('history') }}" class="btn btn-outline-primary btn-sm">View History</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                Post Status
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-4 text-center">
+                        <h5 class="text-primary">{{ pending_posts }}</h5>
+                        <small>Pending</small>
+                    </div>
+                    <div class="col-4 text-center">
+                        <h5 class="text-success">{{ posted_posts }}</h5>
+                        <small>Posted</small>
+                    </div>
+                    <div class="col-4 text-center">
+                        <h5 class="text-danger">{{ failed_posts }}</h5>
+                        <small>Failed</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Posts -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                Recent Posts
+            </div>
+            <div class="card-body">
+                {% if recent_posts %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th>Caption</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for post in recent_posts %}
+                            <tr>
+                                <td>
+                                    {% if post.source %}
+                                        {% if post.source.type == 'account' %}@{% elif post.source.type == 'hashtag' %}#{% endif %}{{ post.source.name }}
+                                    {% else %}
+                                        Unknown
+                                    {% endif %}
+                                </td>
+                                <td>{{ post.caption[:50] + '...' if post.caption and post.caption|length > 50 else post.caption }}</td>
+                                <td>
+                                    {% if post.status == 'pending' %}
+                                    <span class="badge bg-primary">Pending</span>
+                                    {% elif post.status == 'posted' %}
+                                    <span class="badge bg-success">Posted</span>
+                                    {% elif post.status == 'failed' %}
+                                    <span class="badge bg-danger">Failed</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ post.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    {% if post.status == 'pending' %}
+                                    <form method="POST" action="{{ url_for('repost_post', post_id=post.id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-success">Repost Now</button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('cancel_post', post_id=post.id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
+                                    </form>
+                                    {% elif post.instagram_post_url %}
+                                    <a href="{{ post.instagram_post_url }}" target="_blank" class="btn btn-sm btn-outline-primary">View</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-center">No posts found. Add sources and start fetching posts!</p>
+                {% endif %}
+                
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('history') }}" class="btn btn-outline-primary">View All Posts</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Button to fetch posts immediately
+    const fetchNowBtn = document.getElementById('fetch-now-btn');
+    if (fetchNowBtn) {
+        fetchNowBtn.addEventListener('click', function() {
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Fetching...';
+            
+            fetch('/api/fetch-now', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                    alertDiv.role = 'alert';
+                    alertDiv.innerHTML = `
+                        ${data.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    
+                    document.querySelector('.container').prepend(alertDiv);
+                    
+                    // Auto refresh after 5 seconds
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 5000);
+                } else {
+                    throw new Error(data.message);
+                }
+            })
+            .catch(error => {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                alertDiv.role = 'alert';
+                alertDiv.innerHTML = `
+                    Error: ${error.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                
+                document.querySelector('.container').prepend(alertDiv);
+            })
+            .finally(() => {
+                this.disabled = false;
+                this.innerHTML = '<span data-feather="refresh-cw"></span> Fetch Posts Now';
+                feather.replace();
+            });
+        });
+    }
+});
+</script>
+{% endblock %}
